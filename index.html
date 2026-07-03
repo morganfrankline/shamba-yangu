@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#166534"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Shamba Yangu"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icons/icon-192.png"/>
+<title>Dairy Farm Manager</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:#0a1628;color:#e2e8f0;font-family:Georgia,serif;min-height:100vh;overscroll-behavior:none}
+input,select,textarea,button{font-family:monospace;outline:none}
+input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1) opacity(0.5)}
+
+/* ── Splash / Auth ── */
+#splash{position:fixed;inset:0;background:linear-gradient(160deg,#0a1628 0%,#0f2318 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;padding:32px}
+.splash-cow{font-size:72px;margin-bottom:12px;animation:bob 2s infinite ease-in-out}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.splash-title{font-size:30px;font-weight:bold;color:#f0fdf4;letter-spacing:-.02em;margin-bottom:4px}
+.splash-sub{font-size:11px;color:#4ade80;letter-spacing:.2em;text-transform:uppercase;font-family:monospace;margin-bottom:48px}
+
+.auth-card{background:#0f2318;border:1px solid #1e4d2a;border-radius:20px;padding:28px 24px;width:100%;max-width:340px;text-align:center}
+.auth-card h2{font-size:16px;color:#f0fdf4;margin-bottom:6px}
+.auth-card p{font-size:12px;color:#64748b;font-family:monospace;margin-bottom:24px;line-height:1.6}
+
+/* Google button */
+.google-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:#fff;color:#1f2937;border:none;border-radius:10px;padding:13px 20px;font-size:14px;font-weight:bold;cursor:pointer;transition:background .15s;margin-bottom:12px}
+.google-btn:active{background:#f3f4f6}
+.google-icon{width:20px;height:20px;flex-shrink:0}
+
+/* Email button */
+.email-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:transparent;color:#4ade80;border:1.5px solid #1e4d2a;border-radius:10px;padding:12px 20px;font-size:13px;font-weight:bold;cursor:pointer;transition:all .15s;margin-bottom:20px}
+.email-btn:active{background:#0f2318}
+
+.auth-divider{font-size:10px;color:#334155;font-family:monospace;letter-spacing:.1em;margin:4px 0 16px}
+
+/* Email form */
+#email-form{display:none;text-align:left;margin-top:4px}
+.auth-field{margin-bottom:12px}
+.auth-field label{display:block;font-size:10px;color:#4ade80;letter-spacing:.1em;text-transform:uppercase;font-family:monospace;margin-bottom:5px}
+.auth-input{width:100%;background:#071c0e;border:1px solid #1e4d2a;border-radius:8px;color:#e2e8f0;padding:10px 12px;font-size:14px;font-family:monospace}
+.auth-input:focus{border-color:#4ade80}
+.auth-tabs{display:flex;margin-bottom:16px;border-radius:8px;overflow:hidden;border:1px solid #1e4d2a}
+.auth-tab{flex:1;padding:8px;background:transparent;border:none;color:#64748b;font-size:12px;cursor:pointer;font-family:monospace}
+.auth-tab.active{background:#14532d;color:#4ade80}
+.submit-btn{width:100%;background:#15803d;color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:bold;cursor:pointer;margin-top:4px}
+.back-btn{width:100%;background:transparent;color:#64748b;border:none;padding:8px;font-size:12px;cursor:pointer;font-family:monospace;margin-top:8px}
+.auth-err{background:#450a0a;border:1px solid #f8717155;border-radius:8px;padding:8px 12px;font-size:12px;color:#fca5a5;font-family:monospace;margin-top:8px;display:none;text-align:left}
+
+/* Role picker */
+.role-section{margin-bottom:14px}
+.role-picker{display:flex;gap:8px}
+.role-btn{flex:1;padding:10px 6px;border:1.5px solid #1e4d2a;border-radius:10px;background:transparent;color:#64748b;cursor:pointer;font-size:11px;font-family:monospace;text-align:center;transition:all .15s;line-height:1.5}
+.role-btn.active{border-color:#4ade80;color:#4ade80;background:#14532d33}
+
+/* Loading spinner */
+.spinner{display:inline-block;width:22px;height:22px;border:3px solid #1e4d2a;border-top-color:#4ade80;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#splash-loading{display:none;margin-top:20px}
+
+/* ── Main App ── */
+#main-app{display:none;flex-direction:column;min-height:100vh}
+#sync-bar{background:#052e16;border-bottom:1px solid #166534;padding:4px 16px;font-size:10px;font-family:monospace;color:#4ade80;text-align:center;display:none}
+#sync-bar.visible{display:block}
+
+header{background:linear-gradient(135deg,#14532d,#166534,#052e16);border-bottom:2px solid #22c55e44;padding:12px 16px;position:sticky;top:0;z-index:100}
+.h-inner{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;max-width:720px;margin:0 auto}
+.farm-label{font-size:9px;letter-spacing:.2em;color:#86efac;text-transform:uppercase;font-family:monospace}
+.farm-title{font-size:20px;font-weight:bold;color:#f0fdf4}
+.stat-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.stat-chip{background:#052e1688;border:1px solid #22c55e44;border-radius:8px;padding:4px 8px;display:flex;flex-direction:column;align-items:center}
+.stat-num{font-size:13px;font-weight:bold;color:#4ade80}
+.stat-lbl{font-size:8px;color:#86efac;letter-spacing:.08em;text-transform:uppercase}
+.hdr-btns{display:flex;gap:5px}
+.icon-btn{background:transparent;border:1px solid #1e4d2a;border-radius:8px;padding:6px 9px;font-size:11px;cursor:pointer;color:#86efac;white-space:nowrap}
+
+/* User bar */
+.user-bar{max-width:720px;margin:6px auto 0;display:flex;justify-content:space-between;align-items:center}
+.user-badge{display:flex;align-items:center;gap:6px;font-size:10px;font-family:monospace;color:#86efac}
+.user-avatar{width:24px;height:24px;border-radius:50%;border:1.5px solid #4ade80;object-fit:cover}
+.user-avatar-placeholder{width:24px;height:24px;border-radius:50%;border:1.5px solid #4ade80;background:#14532d;display:flex;align-items:center;justify-content:center;font-size:11px;color:#4ade80}
+.role-tag{background:#14532d;color:#4ade80;border:1px solid #166534;border-radius:20px;padding:2px 8px;font-size:9px;font-family:monospace}
+.role-tag.worker{background:#1c1400;color:#facc15;border-color:#facc1533}
+.signout-btn{background:transparent;border:1px solid #f8717133;border-radius:8px;padding:4px 10px;font-size:10px;cursor:pointer;color:#fca5a5;font-family:monospace}
+
+nav{display:flex;background:#0f1f10;border-bottom:1px solid #1a3a1a;overflow-x:auto;-webkit-overflow-scrolling:touch;position:sticky;top:82px;z-index:99}
+nav::-webkit-scrollbar{display:none}
+.nav-btn{flex:1;min-width:58px;padding:9px 2px;background:transparent;border:none;color:#64748b;font-size:9px;cursor:pointer;font-family:monospace;border-bottom:2px solid transparent;transition:all .15s}
+.nav-btn.active{color:#4ade80;border-bottom:2px solid #4ade80;background:#14532d22}
+
+main{flex:1;max-width:720px;margin:0 auto;width:100%;padding:14px 12px 80px}
+.section-title{font-size:18px;font-weight:bold;color:#f0fdf4;margin:0 0 14px}
+
+.card{background:#0f2318;border:1px solid #1e4d2a;border-radius:12px;padding:14px;margin-bottom:12px}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.card-cow{font-size:16px;font-weight:bold;color:#f0fdf4}
+.cow-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.cow-card{background:#0f2318;border:1px solid #1e4d2a;border-radius:12px;padding:14px;cursor:pointer;transition:border-color .15s,transform .1s}
+.cow-card:active{transform:scale(.97)}
+.cow-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.cow-name{font-size:17px;font-weight:bold;color:#f0fdf4;margin-bottom:2px}
+.cow-meta{font-size:10px;color:#4ade80;margin-bottom:8px;font-family:monospace}
+.cow-stats{display:flex;align-items:center;gap:6px;margin-top:8px;margin-bottom:6px}
+.cow-stat{display:flex;flex-direction:column;align-items:center;flex:1}
+.cow-stat-num{font-size:11px;font-weight:bold;color:#86efac}
+.cow-stat-lbl{font-size:8px;color:#4b7a55;text-transform:uppercase;letter-spacing:.05em}
+.cow-stat-div{width:1px;height:22px;background:#1e4d2a}
+.tap-hint{font-size:9px;color:#2d6a3f;text-align:right;font-family:monospace}
+.badge{font-size:9px;padding:3px 7px;border-radius:20px;font-family:monospace;font-weight:bold}
+.cow-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.cow-tab{padding:6px 14px;border:1px solid #1e4d2a;border-radius:20px;background:transparent;color:#64748b;cursor:pointer;font-size:12px;font-family:monospace;transition:all .15s}
+.cow-tab.active{background:#14532d;color:#4ade80;border-color:#4ade80}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:10px;color:#4ade80;letter-spacing:.1em;text-transform:uppercase;font-family:monospace;margin-bottom:4px}
+.input{width:100%;background:#071c0e;border:1px solid #1e4d2a;border-radius:8px;color:#e2e8f0;padding:9px 11px;font-size:14px;font-family:monospace}
+.input:focus{border-color:#4ade80}
+.input-row{display:flex;gap:6px}
+textarea.input{resize:vertical}
+select.input{-webkit-appearance:none}
+.btn{border:none;border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer;font-family:monospace;font-weight:bold;white-space:nowrap}
+.btn-blue{background:#2563eb;color:#fff}
+.btn-green{background:#15803d;color:#fff}
+.btn-red{background:#b91c1c;color:#fff}
+.total-box{margin-top:8px;background:#052e16;border:1px solid #166534;border-radius:8px;padding:9px 12px;font-size:12px;color:#86efac;font-family:monospace}
+.tbl-title{font-size:11px;color:#4ade80;letter-spacing:.1em;text-transform:uppercase;font-family:monospace;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;color:#4ade80;font-family:monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:5px 7px;border-bottom:1px solid #1e4d2a}
+td{padding:7px;color:#cbd5e1;font-family:monospace;border-bottom:1px solid #0f2318}
+tr:nth-child(even){background:#071c0e}
+.health-opts{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.health-opt{padding:5px 11px;border-radius:20px;cursor:pointer;font-size:11px;font-family:monospace;transition:all .15s;border:1.5px solid #334155;color:#94a3b8;background:transparent}
+.health-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.summary-card{background:#0f2318;border:1px solid #1e4d2a;border-radius:12px;padding:14px;margin-top:14px}
+.readonly-banner{background:#1c1400;border:1px solid #facc1544;border-radius:8px;padding:8px 12px;font-size:11px;color:#facc15;font-family:monospace;margin-bottom:12px;text-align:center}
+.activity-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #0f2318;align-items:flex-start}
+.activity-icon{font-size:18px;min-width:28px;text-align:center}
+.activity-what{font-size:12px;color:#cbd5e1}
+.activity-who{font-size:10px;color:#4ade80;font-family:monospace}
+.activity-when{font-size:10px;color:#475569;font-family:monospace}
+
+/* ── AI Assistant ── */
+.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 200px)}
+.chat-messages{flex:1;overflow-y:auto;padding-bottom:12px;display:flex;flex-direction:column;gap:10px}
+.chat-messages::-webkit-scrollbar{display:none}
+.msg{max-width:88%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.6}
+.msg.user{align-self:flex-end;background:#1e3a5f;color:#e2e8f0;border-bottom-right-radius:4px}
+.msg.ai{align-self:flex-start;background:#0f2318;border:1px solid #1e4d2a;color:#cbd5e1;border-bottom-left-radius:4px}
+.msg.ai strong{color:#4ade80}
+.typing{display:flex;gap:4px;align-items:center;padding:12px 14px;background:#0f2318;border:1px solid #1e4d2a;border-radius:14px;border-bottom-left-radius:4px;width:fit-content}
+.typing span{width:7px;height:7px;border-radius:50%;background:#4ade80;animation:bounce .8s infinite}
+.typing span:nth-child(2){animation-delay:.15s}
+.typing span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+.chat-input-wrap{display:flex;gap:8px;padding-top:10px;border-top:1px solid #1e4d2a;margin-top:8px}
+.chat-input{flex:1;background:#071c0e;border:1px solid #1e4d2a;border-radius:20px;color:#e2e8f0;padding:10px 14px;font-size:13px;font-family:monospace;resize:none}
+.chat-input:focus{border-color:#4ade80}
+.chat-send{background:#15803d;color:#fff;border:none;border-radius:20px;padding:10px 16px;font-size:13px;cursor:pointer;font-weight:bold;white-space:nowrap}
+.chat-send:disabled{background:#1e4d2a;color:#4b7a55;cursor:not-allowed}
+.quick-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.quick-btn{background:#071c0e;border:1px solid #1e4d2a;border-radius:20px;color:#4ade80;padding:5px 12px;font-size:11px;cursor:pointer;font-family:monospace}
+.ai-intro{background:#0f2318;border:1px solid #1e4d2a;border-radius:12px;padding:14px;margin-bottom:14px;text-align:center}
+.ai-intro-icon{font-size:32px;margin-bottom:6px}
+.ai-intro-title{font-size:14px;font-weight:bold;color:#f0fdf4;margin-bottom:4px}
+.ai-intro-sub{font-size:11px;color:#64748b;font-family:monospace;line-height:1.5}
+#toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);color:#fff;padding:10px 22px;border-radius:8px;font-family:monospace;font-size:13px;z-index:9999;box-shadow:0 4px 20px #0008;transition:transform .3s;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#install-banner{display:none;position:fixed;bottom:0;left:0;right:0;background:#14532d;border-top:1px solid #4ade8055;padding:12px 16px;z-index:200;align-items:center;gap:10px;justify-content:space-between}
+#install-banner.visible{display:flex}
+.install-text{font-size:12px;color:#86efac;font-family:monospace}
+.install-text strong{color:#f0fdf4}
+.install-btn{background:#4ade80;color:#052e16;border:none;border-radius:8px;padding:8px 16px;font-weight:bold;cursor:pointer;font-family:monospace;font-size:12px}
+.install-close{background:transparent;border:none;color:#4ade80;font-size:18px;cursor:pointer;padding:0 4px}
+</style>
+</head>
+<body>
+
+<!-- ══ SPLASH / AUTH ════════════════════════════════════════════════════════ -->
+<div id="splash">
+  <div class="splash-cow">🐄</div>
+  <div class="splash-title">Shamba Yangu</div>
+  <div class="splash-sub">Dairy Farm Manager</div>
+
+  <div class="auth-card" id="auth-card">
+    <h2>Welcome!</h2>
+    <p>Sign in to access your farm data.<br>Your records are saved to the cloud — safe even if you change phones.</p>
+
+    <!-- Google Sign In -->
+    <button class="google-btn" onclick="signInGoogle()">
+      <svg class="google-icon" viewBox="0 0 48 48">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      Continue with Google
+    </button>
+
+    <div class="auth-divider">─── OR USE EMAIL ───</div>
+    <button class="email-btn" onclick="toggleEmailForm()">✉️ Continue with Email</button>
+
+    <!-- Email form (hidden by default) -->
+    <div id="email-form">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="authTab('login')">Sign In</button>
+        <button class="auth-tab" onclick="authTab('register')">Register</button>
+      </div>
+      <div id="role-section" style="display:none">
+        <div class="field"><label>Account Type</label></div>
+        <div class="role-picker" style="margin-bottom:14px">
+          <div class="role-btn active" id="role-owner" onclick="pickRole('owner')">👨‍💼<br><strong>Owner</strong><br><span style="font-size:9px">Full access</span></div>
+          <div class="role-btn" id="role-worker" onclick="pickRole('worker')">👷<br><strong>Worker</strong><br><span style="font-size:9px">Enter data</span></div>
+        </div>
+      </div>
+      <div class="auth-field"><label>Email</label><input class="auth-input" type="email" id="auth-email" placeholder="you@email.com"/></div>
+      <div class="auth-field"><label>Password</label><input class="auth-input" type="password" id="auth-pass" placeholder="Password"/></div>
+      <div id="auth-name-field" class="auth-field" style="display:none"><label>Your Name</label><input class="auth-input" type="text" id="auth-name" placeholder="e.g. John Kamau"/></div>
+      <button class="submit-btn" id="auth-submit" onclick="doEmailAuth()">Sign In</button>
+      <button class="back-btn" onclick="toggleEmailForm()">← Back</button>
+    </div>
+    <div class="auth-err" id="auth-err"></div>
+  </div>
+
+  <div id="splash-loading" style="margin-top:24px;text-align:center">
+    <div class="spinner"></div>
+    <div style="font-size:11px;color:#4ade80;font-family:monospace;margin-top:10px">Signing you in...</div>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ══════════════════════════════════════════════════════════════ -->
+<div id="main-app">
+  <div id="sync-bar">☁️ Live sync — data saved to cloud</div>
+  <header>
+    <div class="h-inner">
+      <div><div class="farm-label">🌾 SHAMBA YANGU</div><h1 class="farm-title">Dairy Farm Manager</h1></div>
+      <div class="stat-row">
+        <div class="stat-chip"><span class="stat-num" id="hdr-milk">0.0L</span><span class="stat-lbl">Milk</span></div>
+        <div class="stat-chip"><span class="stat-num" id="hdr-sales">KES 0</span><span class="stat-lbl">Earned</span></div>
+        <div class="hdr-btns">
+          <button class="icon-btn" onclick="exportCSV()">⬇ CSV</button>
+        </div>
+      </div>
+    </div>
+    <div class="user-bar">
+      <div class="user-badge">
+        <div id="user-avatar-wrap"></div>
+        <span id="user-label">...</span>
+        <span class="role-tag" id="role-tag">owner</span>
+      </div>
+      <button class="signout-btn" onclick="doSignOut()">Sign Out</button>
+    </div>
+  </header>
+  <nav>
+    <button class="nav-btn active" data-tab="dashboard" onclick="switchTab('dashboard')">📊 Home</button>
+    <button class="nav-btn" data-tab="milk" onclick="switchTab('milk')">🥛 Milk</button>
+    <button class="nav-btn" data-tab="sales" onclick="switchTab('sales')">💰 Sales</button>
+    <button class="nav-btn" data-tab="feed" onclick="switchTab('feed')">🌿 Feed</button>
+    <button class="nav-btn" data-tab="health" onclick="switchTab('health')">🩺 Health</button>
+    <button class="nav-btn" data-tab="vet" onclick="switchTab('vet')">💉 Vet</button>
+    <button class="nav-btn" data-tab="activity" onclick="switchTab('activity')">📋 Log</button>
+    <button class="nav-btn" data-tab="assistant" onclick="switchTab('assistant')">🤖 AI</button>
+  </nav>
+  <main id="main"><div style="text-align:center;padding:60px 20px;color:#4ade80;font-family:monospace">🌿 Loading...</div></main>
+</div>
+
+<div id="toast"></div>
+<div id="install-banner">
+  <div class="install-text"><strong>Install App</strong><br>Add to home screen</div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="install-btn" onclick="installApp()">Install</button>
+    <button class="install-close" onclick="dismissInstall()">✕</button>
+  </div>
+</div>
+
+<!-- ══ FIREBASE ══════════════════════════════════════════════════════════════ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword,
+  signInWithEmailAndPassword, signOut as fbSignOut, onAuthStateChanged, updateProfile }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getDatabase, ref, set, onValue, push, get }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  PASTE YOUR FIREBASE CONFIG HERE                                        ║
+// ║  Get it from: console.firebase.google.com                               ║
+// ║  → Your project → Project Settings → Your apps → Web app (</> icon)    ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+const firebaseConfig = {
+  apiKey:            "AIzaSyBVc9sH0qpunv5CO36K5Y53pz2RtcZsmSY",
+  authDomain:        "shamba-yangu-7f884.firebaseapp.com",
+  databaseURL:       "https://shamba-yangu-7f884-default-rtdb.firebaseio.com",
+  projectId:         "shamba-yangu-7f884",
+  storageBucket:     "shamba-yangu-7f884.firebasestorage.app",
+  messagingSenderId: "1059563607833",
+  appId:             "1:1059563607833:web:df63298358ef26fe539788"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth   = getAuth(firebaseApp);
+const db     = getDatabase(firebaseApp);
+const google = new GoogleAuthProvider();
+
+// ── App state ────────────────────────────────────────────────────────────────
+const COWS = ["Zuri","Furaha","Pendo","Amani"];
+const HEALTH_OPTIONS = ["Healthy","Sick","Pregnant","Recovering","Under Observation"];
+const HEALTH_COLORS  = {Healthy:"#4ade80",Sick:"#f87171",Pregnant:"#facc15",Recovering:"#60a5fa","Under Observation":"#fb923c"};
+const FEED_TYPES     = ["Hay","Silage","Concentrates","Grass","Maize Stover","Dairy Meal","Other"];
+
+let cowData    = {};
+let actLog     = [];
+let currentUser = null;
+let currentRole = "worker";
+let selectedRole = "owner";
+let activeTab  = "dashboard";
+let selectedCow = "Zuri";
+let emailMode  = "login";
+let emailFormOpen = false;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function logArr(n,k){ return Object.values(cowData[n]?.[k]||{}); }
+function totalMilk(n)    { return logArr(n,"milkLog").reduce((s,e)=>s+e.litres,0); }
+function totalSales(n)   { return logArr(n,"salesLog").reduce((s,e)=>s+e.amount,0); }
+function totalVetCost(n) { return logArr(n,"vetLog").reduce((s,e)=>s+(e.cost||0),0); }
+function today(){ return new Date().toISOString().split("T")[0]; }
+function badge(h){ const c=HEALTH_COLORS[h]||"#4ade80"; return `<span class="badge" style="background:${c}22;color:${c};border:1px solid ${c}55">${h}</span>`; }
+function cowHeader(n){ return `<div class="card-header"><span class="card-cow">🐄 ${n}</span>${badge(cowData[n]?.health||"Healthy")}</div>`; }
+function tableHTML(cols,rows){ return `<table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`; }
+function cowTabsHTML(){ return `<div class="cow-tabs">${COWS.map(n=>`<button class="cow-tab ${n===selectedCow?'active':''}" onclick="selectCow('${n}')">${n}</button>`).join("")}</div>`; }
+
+window.showToast = (msg,type="success")=>{
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.style.background=type==="error"?"#ef4444":"#166534";
+  t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2500);
+}
+function updateHeader(){
+  const fm=COWS.reduce((s,n)=>s+totalMilk(n),0);
+  const fs=COWS.reduce((s,n)=>s+totalSales(n),0);
+  document.getElementById("hdr-milk").textContent=fm.toFixed(1)+"L";
+  document.getElementById("hdr-sales").textContent="KES "+fs.toLocaleString();
+}
+
+// ── Auth UI ───────────────────────────────────────────────────────────────────
+window.toggleEmailForm = ()=>{
+  emailFormOpen=!emailFormOpen;
+  document.getElementById("email-form").style.display=emailFormOpen?"block":"none";
+  document.querySelector(".email-btn").style.display=emailFormOpen?"none":"flex";
+  document.querySelector(".google-btn").style.display=emailFormOpen?"none":"flex";
+  document.querySelector(".auth-divider").style.display=emailFormOpen?"none":"block";
+}
+window.authTab = mode=>{
+  emailMode=mode;
+  document.querySelectorAll(".auth-tab").forEach((b,i)=>b.classList.toggle("active",(i===0&&mode==="login")||(i===1&&mode==="register")));
+  document.getElementById("role-section").style.display=mode==="register"?"block":"none";
+  document.getElementById("auth-name-field").style.display=mode==="register"?"block":"none";
+  document.getElementById("auth-submit").textContent=mode==="login"?"Sign In":"Create Account";
+  document.getElementById("auth-err").style.display="none";
+}
+window.pickRole = role=>{
+  selectedRole=role;
+  document.getElementById("role-owner").classList.toggle("active",role==="owner");
+  document.getElementById("role-worker").classList.toggle("active",role==="worker");
+}
+
+function showLoading(){ document.getElementById("auth-card").style.display="none"; document.getElementById("splash-loading").style.display="block"; }
+function hideLoading(){ document.getElementById("auth-card").style.display="block"; document.getElementById("splash-loading").style.display="none"; }
+
+window.signInGoogle = async ()=>{
+  try {
+    showLoading();
+    const cred = await signInWithPopup(auth, google);
+    // First time? save profile
+    const snap = await get(ref(db,`users/${cred.user.uid}`));
+    if(!snap.exists()){
+      await set(ref(db,`users/${cred.user.uid}`),{
+        name: cred.user.displayName||cred.user.email,
+        email: cred.user.email,
+        photo: cred.user.photoURL||"",
+        role: "owner", // first Google user = owner
+        createdAt: Date.now()
+      });
+    }
+  } catch(e){
+    hideLoading();
+    const errEl=document.getElementById("auth-err");
+    errEl.textContent="Google sign-in failed. Try email instead.";
+    errEl.style.display="block";
+  }
+}
+
+window.doEmailAuth = async ()=>{
+  const email=document.getElementById("auth-email").value.trim();
+  const pass=document.getElementById("auth-pass").value;
+  const errEl=document.getElementById("auth-err");
+  errEl.style.display="none";
+  if(!email||!pass){errEl.textContent="Fill in email and password";errEl.style.display="block";return;}
+  document.getElementById("auth-submit").textContent="Please wait...";
+  try {
+    if(emailMode==="register"){
+      const name=document.getElementById("auth-name").value.trim()||email.split("@")[0];
+      const cred=await createUserWithEmailAndPassword(auth,email,pass);
+      await updateProfile(cred.user,{displayName:name});
+      await set(ref(db,`users/${cred.user.uid}`),{name,email,photo:"",role:selectedRole,createdAt:Date.now()});
+    } else {
+      await signInWithEmailAndPassword(auth,email,pass);
+    }
+  } catch(e){
+    const msgs={"auth/email-already-in-use":"Email already registered. Sign in instead.","auth/invalid-email":"Invalid email.","auth/wrong-password":"Wrong password.","auth/user-not-found":"No account found. Register first.","auth/weak-password":"Password needs 6+ characters.","auth/invalid-credential":"Wrong email or password."};
+    errEl.textContent=msgs[e.code]||e.message;
+    errEl.style.display="block";
+    document.getElementById("auth-submit").textContent=emailMode==="login"?"Sign In":"Create Account";
+  }
+}
+
+window.doSignOut = async ()=>{
+  await fbSignOut(auth);
+  cowData={}; actLog=[];
+  document.getElementById("main-app").style.display="none";
+  document.getElementById("splash").style.display="flex";
+  hideLoading();
+  // Reset email form
+  if(emailFormOpen){ emailFormOpen=false; toggleEmailForm(); }
+}
+
+// ── Show spinner immediately — hide auth until login state known
+document.getElementById("auth-card").style.display="none";
+document.getElementById("splash-loading").style.display="block";
+
+// ── Auth state listener ────────────────────────────────────────────────────────
+onAuthStateChanged(auth, async user=>{
+  if(user){
+    currentUser=user;
+
+    // Load user profile
+    onValue(ref(db,`users/${user.uid}`),snap=>{
+      const p=snap.val()||{name:user.displayName||user.email,role:"worker",photo:user.photoURL||""};
+      currentRole=p.role;
+      // Avatar
+      const wrap=document.getElementById("user-avatar-wrap");
+      wrap.innerHTML=p.photo?`<img class="user-avatar" src="${p.photo}" onerror="this.style.display='none'">`
+        :`<div class="user-avatar-placeholder">${(p.name||"U")[0].toUpperCase()}</div>`;
+      document.getElementById("user-label").textContent=p.name||user.email;
+      const rt=document.getElementById("role-tag");
+      rt.textContent=currentRole; rt.className="role-tag"+(currentRole==="worker"?" worker":"");
+      document.getElementById("sync-bar").classList.add("visible");
+    });
+    // Farm data (real-time)
+    onValue(ref(db,"farm"),snap=>{
+      const val=snap.val()||{};
+      cowData=val;
+      COWS.forEach(n=>{
+        if(!cowData[n]) cowData[n]={health:"Healthy",healthNote:"",age:"",breed:"",milkLog:{},salesLog:{},feedLog:{},vetLog:{}};
+        ["milkLog","salesLog","feedLog","vetLog"].forEach(k=>{if(!cowData[n][k])cowData[n][k]={};});
+      });
+      document.getElementById("splash").style.display="none";
+      document.getElementById("main-app").style.display="flex";
+      render();
+    });
+    // Activity log
+    onValue(ref(db,"activity"),snap=>{
+      const val=snap.val();
+      actLog=val?Object.values(val).sort((a,b)=>b.ts-a.ts).slice(0,100):[];
+      if(activeTab==="activity") render();
+    });
+  } else {
+    document.getElementById("splash-loading").style.display="none";
+    document.getElementById("auth-card").style.display="block";
+  }
+});
+
+async function logActivity(icon,what){
+  const snap=await get(ref(db,`users/${currentUser.uid}`));
+  const p=snap.val()||{name:currentUser.email,role:"worker"};
+  await push(ref(db,"activity"),{icon,what,who:p.name,role:p.role,ts:Date.now()});
+}
+
+// ── Tab / cow switching ────────────────────────────────────────────────────────
+window.switchTab=tab=>{
+  activeTab=tab;
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
+  render();
+}
+window.selectCow=n=>{selectedCow=n;render();}
+window.switchToCow=n=>{selectedCow=n;switchTab("milk");}
+
+// ── Export CSV ────────────────────────────────────────────────────────────────
+window.exportCSV=()=>{
+  const rows=[["Cow","Date","Type","Details","Litres","KES"]];
+  COWS.forEach(n=>{
+    logArr(n,"milkLog").forEach(e=>rows.push([n,e.date,"Milk","",e.litres,""]));
+    logArr(n,"salesLog").forEach(e=>rows.push([n,e.date,"Sale","",e.litres||"",e.amount]));
+    logArr(n,"feedLog").forEach(e=>rows.push([n,e.date,"Feed",e.feedType,e.qty+" kg",""]));
+    logArr(n,"vetLog").forEach(e=>rows.push([n,e.date,"Vet",e.reason,"",e.cost||""]));
+  });
+  const csv=rows.map(r=>r.map(c=>`"${c}"`).join(",")).join("\n");
+  const a=document.createElement("a");
+  a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
+  a.download="farm_records.csv"; a.click();
+  showToast("CSV exported ✓");
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render(){
+  const m=document.getElementById("main");
+  updateHeader();
+  if(activeTab==="dashboard") m.innerHTML=renderDashboard();
+  else if(activeTab==="milk")  m.innerHTML=renderMilk();
+  else if(activeTab==="sales") m.innerHTML=renderSales();
+  else if(activeTab==="feed")  m.innerHTML=renderFeed();
+  else if(activeTab==="health")m.innerHTML=renderHealth();
+  else if(activeTab==="vet")   m.innerHTML=renderVet();
+  else if(activeTab==="activity") m.innerHTML=renderActivity();
+  else if(activeTab==="assistant") renderAssistant();
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function renderDashboard(){
+  const cards=COWS.map(n=>`
+    <div class="cow-card" onclick="switchToCow('${n}')">
+      <div class="cow-card-top"><span style="font-size:26px">🐄</span>${badge(cowData[n]?.health||"Healthy")}</div>
+      <div class="cow-name">${n}</div>
+      ${cowData[n]?.breed?`<div class="cow-meta">${cowData[n].breed}${cowData[n].age?' · '+cowData[n].age+'yrs':''}</div>`:''}
+      <div class="cow-stats">
+        <div class="cow-stat"><span class="cow-stat-num">${totalMilk(n).toFixed(1)}</span><span class="cow-stat-lbl">Litres</span></div>
+        <div class="cow-stat-div"></div>
+        <div class="cow-stat"><span class="cow-stat-num">${totalSales(n).toLocaleString()}</span><span class="cow-stat-lbl">KES</span></div>
+        <div class="cow-stat-div"></div>
+        <div class="cow-stat"><span class="cow-stat-num">${logArr(n,"vetLog").length}</span><span class="cow-stat-lbl">Vet</span></div>
+      </div>
+      <div class="tap-hint">Tap to manage →</div>
+    </div>`).join("");
+  const sumRows=COWS.map(n=>[n,totalMilk(n).toFixed(1),totalSales(n).toLocaleString(),
+    totalVetCost(n)>0?`KES ${totalVetCost(n).toLocaleString()}`:"—",
+    `<span style="color:${HEALTH_COLORS[cowData[n]?.health||"Healthy"]};font-weight:bold">${cowData[n]?.health||"Healthy"}</span>`]);
+  return `<h2 class="section-title">Farm Overview</h2>
+    <div class="cow-grid">${cards}</div>
+    <div class="summary-card"><div class="tbl-title">All Cows Summary</div>
+      ${tableHTML(["Cow","Milk (L)","Sales (KES)","Vet Cost","Status"],sumRows)}</div>`;
+}
+
+// ── MILK ──────────────────────────────────────────────────────────────────────
+function renderMilk(){
+  const log=[...logArr(selectedCow,"milkLog")].sort((a,b)=>b.date.localeCompare(a.date));
+  return `<h2 class="section-title">🥛 Milk Records</h2>${cowTabsHTML()}
+    <div class="card">${cowHeader(selectedCow)}
+      <div class="field"><label>Date</label><input class="input" type="date" id="milk-date" value="${today()}"></div>
+      <div class="field"><label>Litres Milked</label>
+        <div class="input-row"><input class="input" type="number" id="milk-qty" placeholder="e.g. 12.5" step="0.1" min="0">
+        <button class="btn btn-blue" onclick="addMilk()">+ Add</button></div></div>
+      <div class="total-box">Total: <strong>${totalMilk(selectedCow).toFixed(1)} litres</strong> · ${logArr(selectedCow,"milkLog").length} sessions</div>
+    </div>
+    ${log.length?`<div class="card"><div class="tbl-title">Milk Log</div>${tableHTML(["Date","Litres","By"],log.map(e=>[e.date,e.litres+" L",e.by||"—"]))}</div>`:''}`;
+}
+window.addMilk=async()=>{
+  const qty=+document.getElementById("milk-qty").value;
+  const date=document.getElementById("milk-date").value;
+  if(!qty||qty<=0){showToast("Enter a valid amount","error");return;}
+  await push(ref(db,`farm/${selectedCow}/milkLog`),{date,litres:qty,by:currentUser.displayName||currentUser.email,ts:Date.now()});
+  await logActivity("🥛",`Logged ${qty}L milk for ${selectedCow}`);
+  showToast(`${qty}L logged for ${selectedCow} ✓`);
+}
+
+// ── SALES ─────────────────────────────────────────────────────────────────────
+function renderSales(){
+  const log=[...logArr(selectedCow,"salesLog")].sort((a,b)=>b.date.localeCompare(a.date));
+  return `<h2 class="section-title">💰 Sales Records</h2>${cowTabsHTML()}
+    <div class="card">${cowHeader(selectedCow)}
+      <div class="field"><label>Date</label><input class="input" type="date" id="sale-date" value="${today()}"></div>
+      <div class="field"><label>Litres Sold (optional)</label><input class="input" type="number" id="sale-litres" placeholder="e.g. 10" step="0.1" min="0"></div>
+      <div class="field"><label>Amount Earned (KES)</label>
+        <div class="input-row"><input class="input" type="number" id="sale-amount" placeholder="e.g. 500" min="0">
+        <button class="btn btn-green" onclick="addSale()">+ Add</button></div></div>
+      <div class="total-box">Total Earned: <strong>KES ${totalSales(selectedCow).toLocaleString()}</strong></div>
+    </div>
+    ${log.length?`<div class="card"><div class="tbl-title">Sales Log</div>${tableHTML(["Date","Litres","KES","By"],log.map(e=>[e.date,e.litres>0?e.litres+" L":"—",e.amount.toLocaleString(),e.by||"—"]))}</div>`:''}`;
+}
+window.addSale=async()=>{
+  const amount=+document.getElementById("sale-amount").value;
+  const litres=+document.getElementById("sale-litres").value||0;
+  const date=document.getElementById("sale-date").value;
+  if(!amount||amount<=0){showToast("Enter a valid amount","error");return;}
+  await push(ref(db,`farm/${selectedCow}/salesLog`),{date,amount,litres,by:currentUser.displayName||currentUser.email,ts:Date.now()});
+  await logActivity("💰",`Recorded KES ${amount} sale for ${selectedCow}`);
+  showToast(`KES ${amount} recorded ✓`);
+}
+
+// ── FEED ──────────────────────────────────────────────────────────────────────
+function renderFeed(){
+  const log=[...logArr(selectedCow,"feedLog")].sort((a,b)=>b.date.localeCompare(a.date));
+  return `<h2 class="section-title">🌿 Feeding Records</h2>${cowTabsHTML()}
+    <div class="card">${cowHeader(selectedCow)}
+      <div class="field"><label>Date</label><input class="input" type="date" id="feed-date" value="${today()}"></div>
+      <div class="field"><label>Feed Type</label><select class="input" id="feed-type">${FEED_TYPES.map(f=>`<option>${f}</option>`).join("")}</select></div>
+      <div class="field"><label>Quantity (kg)</label>
+        <div class="input-row"><input class="input" type="number" id="feed-qty" placeholder="e.g. 5" step="0.1" min="0">
+        <button class="btn btn-green" onclick="addFeed()">+ Add</button></div></div>
+      <div class="field"><label>Notes (optional)</label><input class="input" type="text" id="feed-note" placeholder="Any notes..."></div>
+      <div class="total-box">Total Sessions: <strong>${logArr(selectedCow,"feedLog").length}</strong></div>
+    </div>
+    ${log.length?`<div class="card"><div class="tbl-title">Feed Log</div>${tableHTML(["Date","Feed","Qty","By"],log.map(e=>[e.date,e.feedType,e.qty+" kg",e.by||"—"]))}</div>`:''}`;
+}
+window.addFeed=async()=>{
+  const qty=+document.getElementById("feed-qty").value;
+  const date=document.getElementById("feed-date").value;
+  const feedType=document.getElementById("feed-type").value;
+  const note=document.getElementById("feed-note").value;
+  if(!qty||qty<=0){showToast("Enter a valid quantity","error");return;}
+  await push(ref(db,`farm/${selectedCow}/feedLog`),{date,feedType,qty,note,by:currentUser.displayName||currentUser.email,ts:Date.now()});
+  await logActivity("🌿",`Fed ${selectedCow} ${qty}kg of ${feedType}`);
+  showToast(`Feed logged for ${selectedCow} ✓`);
+}
+
+// ── HEALTH ────────────────────────────────────────────────────────────────────
+function renderHealth(){
+  const isOwner=currentRole==="owner";
+  return `<h2 class="section-title">🩺 Health Monitor</h2>
+    ${!isOwner?'<div class="readonly-banner">🩺 Health details can only be updated by the Owner</div>':''}
+    ${COWS.map(name=>{
+      const c=cowData[name]||{};
+      const opts=HEALTH_OPTIONS.map(o=>{
+        const col=HEALTH_COLORS[o];const active=c.health===o;
+        return `<button class="health-opt" ${isOwner?`onclick="setHealth('${name}','${o}')"`:'disabled'}
+          style="background:${active?col+'33':'transparent'};border-color:${active?col:'#334155'};color:${active?col:'#94a3b8'};${!isOwner?'opacity:.5':''}">${o}</button>`;
+      }).join("");
+      return `<div class="card">
+        <div class="card-header"><span class="card-cow">🐄 ${name}</span>
+          <div style="width:12px;height:12px;border-radius:50%;background:${HEALTH_COLORS[c.health||'Healthy']}"></div></div>
+        <div class="health-grid">
+          <div class="field"><label>Age (years)</label><input class="input" type="text" value="${c.age||''}" placeholder="e.g. 3" ${isOwner?`oninput="updateCowField('${name}','age',this.value)"`:'readonly'}></div>
+          <div class="field"><label>Breed</label><input class="input" type="text" value="${c.breed||''}" placeholder="e.g. Friesian" ${isOwner?`oninput="updateCowField('${name}','breed',this.value)"`:'readonly'}></div>
+        </div>
+        <div class="field"><label>Health Status</label><div class="health-opts">${opts}</div></div>
+        <div class="field"><label>Health Notes</label>
+          <textarea class="input" rows="3" placeholder="e.g. Vaccinated on 01/06..." ${isOwner?`oninput="updateCowField('${name}','healthNote',this.value)"`:'readonly'}>${c.healthNote||''}</textarea></div>
+      </div>`;
+    }).join("")}`;
+}
+window.setHealth=async(name,status)=>{
+  cowData[name].health=status;
+  await set(ref(db,`farm/${name}/health`),status);
+  await logActivity("🩺",`Updated ${name}'s health to ${status}`);
+  render();
+}
+window.updateCowField=async(name,field,val)=>{
+  cowData[name][field]=val;
+  await set(ref(db,`farm/${name}/${field}`),val);
+}
+
+// ── VET ───────────────────────────────────────────────────────────────────────
+function renderVet(){
+  const log=[...logArr(selectedCow,"vetLog")].sort((a,b)=>b.date.localeCompare(a.date));
+  const summary=COWS.map(n=>[n,logArr(n,"vetLog").length,totalVetCost(n)>0?`KES ${totalVetCost(n).toLocaleString()}`:"—"]);
+  return `<h2 class="section-title">💉 Vet Visit Log</h2>${cowTabsHTML()}
+    <div class="card">${cowHeader(selectedCow)}
+      <div class="field"><label>Date</label><input class="input" type="date" id="vet-date" value="${today()}"></div>
+      <div class="field"><label>Reason / Treatment</label><input class="input" type="text" id="vet-reason" placeholder="e.g. Vaccination, Deworming..."></div>
+      <div class="field"><label>Cost (KES, optional)</label><input class="input" type="number" id="vet-cost" placeholder="e.g. 1500" min="0"></div>
+      <div class="field"><label>Notes</label>
+        <div class="input-row"><input class="input" type="text" id="vet-note" placeholder="Additional notes..." style="flex:1">
+        <button class="btn btn-red" onclick="addVet()">+ Add</button></div></div>
+      ${totalVetCost(selectedCow)>0?`<div class="total-box">Total Vet Costs: <strong>KES ${totalVetCost(selectedCow).toLocaleString()}</strong></div>`:''}
+    </div>
+    ${log.length?`<div class="card"><div class="tbl-title">Vet Log — ${selectedCow}</div>${tableHTML(["Date","Reason","Cost","By"],log.map(e=>[e.date,e.reason,e.cost>0?`KES ${e.cost.toLocaleString()}`:"—",e.by||"—"]))}</div>`:''}
+    <div class="card"><div class="tbl-title">All Cows — Vet Summary</div>${tableHTML(["Cow","Visits","Total Cost"],summary)}</div>`;
+}
+window.addVet=async()=>{
+  const reason=document.getElementById("vet-reason").value.trim();
+  const cost=+document.getElementById("vet-cost").value||0;
+  const note=document.getElementById("vet-note").value;
+  const date=document.getElementById("vet-date").value;
+  if(!reason){showToast("Enter a reason","error");return;}
+  await push(ref(db,`farm/${selectedCow}/vetLog`),{date,reason,cost,note,by:currentUser.displayName||currentUser.email,ts:Date.now()});
+  await logActivity("💉",`Vet visit for ${selectedCow}: ${reason}`);
+  showToast(`Vet visit logged ✓`);
+}
+
+// ── ACTIVITY LOG ──────────────────────────────────────────────────────────────
+function renderActivity(){
+  if(!actLog.length) return `<h2 class="section-title">📋 Activity Log</h2><div class="card" style="text-align:center;color:#4b7a55;font-family:monospace;padding:30px">No activity yet</div>`;
+  const items=actLog.map(e=>{
+    const d=new Date(e.ts);
+    const when=d.toLocaleDateString("en-KE",{day:"numeric",month:"short"})+" · "+d.toLocaleTimeString("en-KE",{hour:"2-digit",minute:"2-digit"});
+    return `<div class="activity-item">
+      <div class="activity-icon">${e.icon}</div>
+      <div style="flex:1">
+        <div class="activity-what">${e.what}</div>
+        <div class="activity-who">by ${e.who} · ${e.role}</div>
+        <div class="activity-when">${when}</div>
+      </div></div>`;
+  }).join("");
+  return `<h2 class="section-title">📋 Activity Log</h2><div class="card"><div class="tbl-title">Recent Activity</div>${items}</div>`;
+}
+
+
+// ── AI ASSISTANT ──────────────────────────────────────────────────────────────
+let chatHistory = [];
+
+function buildFarmContext() {
+  let ctx = `You are a helpful dairy farm assistant called "Brian". You help Brian manage his dairy farm in Kenya.
+The farm has 4 cows: Zuri, Furaha, Pendo, and Amani.
+Today's date: ${new Date().toLocaleDateString("en-KE",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}.
+
+Here is the current farm data:
+`;
+  COWS.forEach(n => {
+    const c = cowData[n] || {};
+    const milk = logArr(n,"milkLog");
+    const sales = logArr(n,"salesLog");
+    const feed = logArr(n,"feedLog");
+    const vet = logArr(n,"vetLog");
+    const totalL = totalMilk(n).toFixed(1);
+    const totalKES = totalSales(n).toLocaleString();
+    const lastMilk = milk.length ? [...milk].sort((a,b)=>b.date.localeCompare(a.date))[0] : null;
+    const lastVet = vet.length ? [...vet].sort((a,b)=>b.date.localeCompare(a.date))[0] : null;
+    const lastFeed = feed.length ? [...feed].sort((a,b)=>b.date.localeCompare(a.date))[0] : null;
+    ctx += `
+🐄 ${n}:
+  - Health: ${c.health||"Healthy"}${c.healthNote?" ("+c.healthNote+")":""}
+  - Breed: ${c.breed||"Unknown"}, Age: ${c.age||"Unknown"} years
+  - Total milk produced: ${totalL} litres across ${milk.length} sessions
+  - Total sales earned: KES ${totalKES} across ${sales.length} sales
+  - Last milk recorded: ${lastMilk?lastMilk.date+" ("+lastMilk.litres+"L)":"No records yet"}
+  - Last vet visit: ${lastVet?lastVet.date+" — "+lastVet.reason:"No vet visits recorded"}
+  - Last feeding: ${lastFeed?lastFeed.date+" — "+lastFeed.qty+"kg of "+lastFeed.feedType:"No feeding records"}
+`;
+  });
+  ctx += `\nAlways give practical, specific advice. Reference the actual cow names and data when giving advice. Keep answers concise and friendly. Use simple English the farmer can understand.`;
+  return ctx;
+}
+
+function renderAssistant() {
+  const m = document.getElementById("main");
+  m.innerHTML = `
+    <h2 class="section-title">🤖 Farm Assistant</h2>
+    <div class="ai-intro">
+      <div class="ai-intro-icon">🌿</div>
+      <div class="ai-intro-title">Brian</div>
+      <div class="ai-intro-sub">Ask me anything about your farm — milk production, cow health, feeding tips, and more. I know your farm data!</div>
+    </div>
+    <div class="quick-btns">
+      <button class="quick-btn" onclick="quickAsk('How are my cows doing overall?')">📊 Farm overview</button>
+      <button class="quick-btn" onclick="quickAsk('Which cow is producing the most milk?')">🥛 Best milk producer</button>
+      <button class="quick-btn" onclick="quickAsk('Give me tips to improve milk production')">💡 Improve milk</button>
+      <button class="quick-btn" onclick="quickAsk('Which cow needs a vet visit?')">🩺 Vet check</button>
+      <button class="quick-btn" onclick="quickAsk('What should I feed my cows today?')">🌿 Feeding advice</button>
+    </div>
+    <div class="chat-wrap">
+      <div class="chat-messages" id="chat-messages">
+        ${chatHistory.map(renderMsg).join("")}
+        ${chatHistory.length===0?`<div class="msg ai"><strong>Jambo! 👋</strong> Hey there! I am Brian, I am here to assist you. I can see all your farm data — just ask me anything about Zuri, Furaha, Pendo and Amani!</div>`:""}
+      </div>
+      <div class="chat-input-wrap">
+        <textarea class="chat-input" id="chat-input" placeholder="Ask about your farm..." rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea>
+        <button class="chat-send" id="chat-send" onclick="sendChat()">Send</button>
+      </div>
+    </div>`;
+  scrollChat();
+}
+
+function renderMsg(msg) {
+  const time = msg.ts ? new Date(msg.ts).toLocaleTimeString("en-KE",{hour:"2-digit",minute:"2-digit"}) : "";
+  const formatted = msg.content.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>").replace(/\n/g,"<br>");
+  return `<div class="msg ${msg.role==="user"?"user":"ai"}">${formatted}<div class="msg-time">${time}</div></div>`;
+}
+
+function scrollChat() {
+  setTimeout(()=>{
+    const el = document.getElementById("chat-messages");
+    if(el) el.scrollTop = el.scrollHeight;
+  }, 100);
+}
+
+window.quickAsk = q => {
+  document.getElementById("chat-input") && (document.getElementById("chat-input").value = q);
+  sendChat();
+}
+
+window.sendChat = async () => {
+  const input = document.getElementById("chat-input");
+  const sendBtn = document.getElementById("chat-send");
+  if(!input) return;
+  const text = input.value.trim();
+  if(!text) return;
+
+  // Add user message
+  chatHistory.push({role:"user", content:text, ts:Date.now()});
+  input.value = "";
+  sendBtn.disabled = true;
+
+  // Re-render with typing indicator
+  renderAssistant();
+  const messagesEl = document.getElementById("chat-messages");
+  if(messagesEl){
+    messagesEl.innerHTML += `<div class="typing" id="typing-indicator"><span></span><span></span><span></span></div>`;
+    scrollChat();
+  }
+
+  try {
+    const geminiKey = "AQ.Ab8RN6LW2OxgQ-OHYZron18vHUFR3TxcBbLcBp0VZE7vkzURgw";
+    const farmCtx = buildFarmContext();
+    const contents = chatHistory.slice(-10).map(m=>({
+      role: m.role==="user"?"user":"model",
+      parts:[{text:m.content}]
+    }));
+    // Use v1alpha which supports AQ. style keys
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-goog-api-key": geminiKey},
+      body:JSON.stringify({
+        system_instruction:{parts:[{text:farmCtx}]},
+        contents:contents,
+        generationConfig:{maxOutputTokens:1000,temperature:0.7}
+      })
+    });
+    const data = await res.json();
+    console.log("Gemini response:", JSON.stringify(data).substring(0,200));
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
+                  data.error?.message ||
+                  "Sorry, I could not get a response. Please try again.";
+    chatHistory.push({role:"assistant", content:reply, ts:Date.now()});
+  } catch(e) {
+    console.error("Brian error:", e);
+    chatHistory.push({role:"assistant", content:"Sorry, I had trouble connecting. Please check your internet and try again.", ts:Date.now()});
+  }
+
+  renderAssistant();
+  const btn = document.getElementById("chat-send");
+  if(btn) btn.disabled = false;
+}
+// ── PWA ───────────────────────────────────────────────────────────────────────
+let deferredPrompt=null;
+window.addEventListener("beforeinstallprompt",e=>{
+  e.preventDefault(); deferredPrompt=e;
+  document.getElementById("install-banner").classList.add("visible");
+});
+window.installApp=()=>{
+  if(!deferredPrompt)return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(()=>{deferredPrompt=null;dismissInstall();});
+}
+window.dismissInstall=()=>document.getElementById("install-banner").classList.remove("visible");
+window.addEventListener("appinstalled",()=>{dismissInstall();showToast("App installed! 🎉");});
+if("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").then(reg => {
+    // Check for updates every time app is opened
+    reg.update();
+
+    // When a new version is found, notify and auto-reload
+    reg.addEventListener("updatefound", () => {
+      const newSW = reg.installing;
+      newSW.addEventListener("statechange", () => {
+        if(newSW.state === "installed" && navigator.serviceWorker.controller) {
+          // New version ready — show update toast then reload
+          showToast("🔄 App updated! Refreshing...");
+          setTimeout(() => {
+            newSW.postMessage("skipWaiting");
+            window.location.reload();
+          }, 2000);
+        }
+      });
+    });
+  });
+
+  // When SW takes control, reload to use new version
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if(!refreshing) { refreshing = true; window.location.reload(); }
+  });
+}
+</script>
+</body>
+</html>
