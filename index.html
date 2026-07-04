@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -801,17 +801,31 @@ window.sendChat = async () => {
 
   try {
     const farmCtx = buildFarmContext();
-    const contents = chatHistory.slice(-10).map(m=>({
-      role: m.role==="user"?"user":"model",
-      parts:[{text:m.content}]
-    }));
-    const res = await fetch("/.netlify/functions/chat", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({messages:contents, systemPrompt:farmCtx})
+    const history = chatHistory.slice(-10);
+    const formattedMessages = [
+      { role: "system", content: farmCtx },
+      ...history.map(m => ({
+        role: m.role === "user" ? "user" : "assistant",
+        content: m.content
+      }))
+    ];
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer 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",
+        "HTTP-Referer": "https://nimble-pasca-3791d9.netlify.app",
+        "X-Title": "Shamba Yangu Farm Assistant"
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-3.2-3b-instruct:free",
+        messages: formattedMessages,
+        max_tokens: 800
+      })
     });
     const data = await res.json();
-    chatHistory.push({role:"assistant", content:data.reply||"Sorry, no response.", ts:Date.now()});
+    const reply = data.choices?.[0]?.message?.content || data.error?.message || "Sorry, no response.";
+    chatHistory.push({role:"assistant", content:reply, ts:Date.now()});
   } catch(e) {
     chatHistory.push({role:"assistant", content:"Sorry, I had trouble connecting. Please check your internet and try again.", ts:Date.now()});
   }
@@ -863,3 +877,4 @@ if("serviceWorker" in navigator) {
 </script>
 </body>
 </html>
+
