@@ -800,25 +800,18 @@ window.sendChat = async () => {
   }
 
   try {
-    const GEMINI_KEY = "AQ.Ab8RN6LW2OxgQ-OHYZron18vHUFR3TxcBbLcBp0VZE7vkzURgw";
     const farmCtx = buildFarmContext();
     const contents = chatHistory.slice(-10).map(m=>({
       role: m.role==="user"?"user":"model",
       parts:[{text:m.content}]
     }));
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,{
+    const res = await fetch("/.netlify/functions/chat", {
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        system_instruction:{parts:[{text:farmCtx}]},
-        contents:contents,
-        generationConfig:{maxOutputTokens:800,temperature:0.7}
-      })
+      body:JSON.stringify({messages:contents, systemPrompt:farmCtx})
     });
     const data = await res.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text ||
-                  (data.error ? "Error: "+data.error.message : "Sorry, no response.");
-    chatHistory.push({role:"assistant", content:reply, ts:Date.now()});
+    chatHistory.push({role:"assistant", content:data.reply||"Sorry, no response.", ts:Date.now()});
   } catch(e) {
     chatHistory.push({role:"assistant", content:"Sorry, I had trouble connecting. Please check your internet and try again.", ts:Date.now()});
   }
