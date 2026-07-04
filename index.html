@@ -800,30 +800,26 @@ window.sendChat = async () => {
   }
 
   try {
-    const geminiKey = "AQ.Ab8RN6LW2OxgQ-OHYZron18vHUFR3TxcBbLcBp0VZE7vkzURgw";
+    const GEMINI_KEY = "AQ.Ab8RN6LW2OxgQ-OHYZron18vHUFR3TxcBbLcBp0VZE7vkzURgw";
     const farmCtx = buildFarmContext();
     const contents = chatHistory.slice(-10).map(m=>({
       role: m.role==="user"?"user":"model",
       parts:[{text:m.content}]
     }));
-    // Use v1alpha which supports AQ. style keys
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,{
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,{
       method:"POST",
-      headers:{"Content-Type":"application/json","x-goog-api-key": geminiKey},
+      headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
         system_instruction:{parts:[{text:farmCtx}]},
         contents:contents,
-        generationConfig:{maxOutputTokens:1000,temperature:0.7}
+        generationConfig:{maxOutputTokens:800,temperature:0.7}
       })
     });
     const data = await res.json();
-    console.log("Gemini response:", JSON.stringify(data).substring(0,200));
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 
-                  data.error?.message ||
-                  "Sorry, I could not get a response. Please try again.";
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text ||
+                  (data.error ? "Error: "+data.error.message : "Sorry, no response.");
     chatHistory.push({role:"assistant", content:reply, ts:Date.now()});
   } catch(e) {
-    console.error("Brian error:", e);
     chatHistory.push({role:"assistant", content:"Sorry, I had trouble connecting. Please check your internet and try again.", ts:Date.now()});
   }
 
