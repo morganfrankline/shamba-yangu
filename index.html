@@ -629,12 +629,12 @@ function renderHealth(){
         <div class="card-header"><span class="card-cow">🐄 ${name}</span>
           <div style="width:12px;height:12px;border-radius:50%;background:${HEALTH_COLORS[c.health||'Healthy']}"></div></div>
         <div class="health-grid">
-          <div class="field"><label>Age (years)</label><input class="input" type="text" value="${c.age||''}" placeholder="e.g. 3" ${isOwner?`oninput="updateCowField('${name}','age',this.value)"`:'readonly'}></div>
-          <div class="field"><label>Breed</label><input class="input" type="text" value="${c.breed||''}" placeholder="e.g. Friesian" ${isOwner?`oninput="updateCowField('${name}','breed',this.value)"`:'readonly'}></div>
+          <div class="field"><label>Age (years)</label><input class="input" type="text" value="${c.age||''}" placeholder="e.g. 3" ${isOwner?`onblur="updateCowField('${name}','age',this.value)" id="age-${name}"`:'readonly'}></div>
+          <div class="field"><label>Breed</label><input class="input" type="text" value="${c.breed||''}" placeholder="e.g. Friesian" ${isOwner?`onblur="updateCowField('${name}','breed',this.value)" id="breed-${name}"`:'readonly'}></div>
         </div>
         <div class="field"><label>Health Status</label><div class="health-opts">${opts}</div></div>
         <div class="field"><label>Health Notes</label>
-          <textarea class="input" rows="3" placeholder="e.g. Vaccinated on 01/06..." ${isOwner?`oninput="updateCowField('${name}','healthNote',this.value)"`:'readonly'}>${c.healthNote||''}</textarea></div>
+          <textarea class="input" rows="3" placeholder="e.g. Vaccinated on 01/06..." ${isOwner?`onblur="updateCowField('${name}','healthNote',this.value)" id="note-${name}"`:'readonly'}>${c.healthNote||''}</textarea></div>
       </div>`;
     }).join("")}`;
 }
@@ -877,5 +877,3 @@ if("serviceWorker" in navigator) {
 </script>
 </body>
 </html>
-
-         
