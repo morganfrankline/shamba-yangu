@@ -864,31 +864,35 @@ window.dismissInstall=()=>document.getElementById("install-banner").classList.re
 window.addEventListener("appinstalled",()=>{dismissInstall();showToast("App installed! 🎉");});
 if("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").then(reg => {
-    // Check for updates every time app is opened
     reg.update();
-
-    // When a new version is found, notify and auto-reload
     reg.addEventListener("updatefound", () => {
       const newSW = reg.installing;
       newSW.addEventListener("statechange", () => {
         if(newSW.state === "installed" && navigator.serviceWorker.controller) {
-          // New version ready — show update toast then reload
           showToast("🔄 App updated! Refreshing...");
-          setTimeout(() => {
-            newSW.postMessage("skipWaiting");
-            window.location.reload();
-          }, 2000);
+          setTimeout(() => { newSW.postMessage("skipWaiting"); window.location.reload(); }, 2000);
         }
       });
     });
   });
-
-  // When SW takes control, reload to use new version
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if(!refreshing) { refreshing = true; window.location.reload(); }
   });
 }
+
+// ── Show install button manually if prompt not available ──────────────────────
+window.addEventListener("load", () => {
+  // Show manual install instructions after 3 seconds if not installed
+  setTimeout(() => {
+    const isInstalled = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+    if(!isInstalled && !deferredPrompt) {
+      document.getElementById("install-banner").classList.add("visible");
+      document.querySelector(".install-text").innerHTML = "<strong>Install App</strong><br>Tap ⋮ menu → Add to Home screen";
+      document.querySelector(".install-btn").style.display = "none";
+    }
+  }, 3000);
+});
 </script>
 </body>
 </html>
