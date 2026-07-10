@@ -629,14 +629,29 @@ function renderHealth(){
         <div class="card-header"><span class="card-cow">🐄 ${name}</span>
           <div style="width:12px;height:12px;border-radius:50%;background:${HEALTH_COLORS[c.health||'Healthy']}"></div></div>
         <div class="health-grid">
-          <div class="field"><label>Age (years)</label><input class="input" type="text" value="${c.age||''}" placeholder="e.g. 3" ${isOwner?`onblur="updateCowField('${name}','age',this.value)" id="age-${name}"`:'readonly'}></div>
-          <div class="field"><label>Breed</label><input class="input" type="text" value="${c.breed||''}" placeholder="e.g. Friesian" ${isOwner?`onblur="updateCowField('${name}','breed',this.value)" id="breed-${name}"`:'readonly'}></div>
+          <div class="field"><label>Age (years)</label><input class="input" type="text" value="${c.age||''}" placeholder="e.g. 3" ${isOwner?`id="age-${name}" onchange="updateCowField('${name}','age',this.value)"`:'readonly'}></div>
+          <div class="field"><label>Breed</label><input class="input" type="text" value="${c.breed||''}" placeholder="e.g. Friesian" ${isOwner?`id="breed-${name}" onchange="updateCowField('${name}','breed',this.value)"`:'readonly'}></div>
         </div>
         <div class="field"><label>Health Status</label><div class="health-opts">${opts}</div></div>
         <div class="field"><label>Health Notes</label>
-          <textarea class="input" rows="3" placeholder="e.g. Vaccinated on 01/06..." ${isOwner?`onblur="updateCowField('${name}','healthNote',this.value)" id="note-${name}"`:'readonly'}>${c.healthNote||''}</textarea></div>
+          <textarea class="input" rows="3" placeholder="e.g. Vaccinated on 01/06..." ${isOwner?`id="note-${name}" onchange="updateCowField('${name}','healthNote',this.value)"`:'readonly'}>${c.healthNote||''}</textarea></div>
+        ${isOwner?`<button class="btn btn-green" style="width:100%;margin-top:8px" onclick="saveHealthFields('${name}')">💾 Save Notes</button>`:''}
       </div>`;
     }).join("")}`;
+}
+
+// Save health fields without re-rendering
+window.saveHealthFields = async (name) => {
+  const age = document.getElementById("age-"+name)?.value||"";
+  const breed = document.getElementById("breed-"+name)?.value||"";
+  const note = document.getElementById("note-"+name)?.value||"";
+  cowData[name].age = age;
+  cowData[name].breed = breed;
+  cowData[name].healthNote = note;
+  await set(ref(db,`farm/${name}/age`), age);
+  await set(ref(db,`farm/${name}/breed`), breed);
+  await set(ref(db,`farm/${name}/healthNote`), note);
+  showToast(`${name}'s details saved ✓`);
 }
 window.setHealth=async(name,status)=>{
   cowData[name].health=status;
